@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -25,355 +25,209 @@
             margin: 0 auto;
             position: relative;
             display: flex;
-            flex-col;
+            flex-direction: column;
+            /* Hardcoded background image from GitHub */
+            background-image: url('https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/East%20Wing.jpg');
+            background-size: cover;
+            background-position: center;
         }
 
-        /* Glassmorphism Panel Styles */
+        /* Dark overlay to ensure text is readable against the background */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.7) 100%);
+            z-index: 1;
+        }
+
+        .content-layer {
+            position: relative;
+            z-index: 2;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 4rem;
+            color: white;
+        }
+
         .glass-panel {
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.5);
-        }
-
-        .glass-panel-light {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* Loading Spinner */
-        .loader {
-            width: 100px;
-            height: 100px;
-            border: 6px solid rgba(255,255,255,0.2);
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 32px;
+            padding: 3rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
     </style>
 </head>
-<body class="text-white">
+<body>
 
-    <!-- Background Image -->
-    <div class="absolute inset-0 z-0">
-        <img src="East Wing.jpg" alt="Resort Background" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/1080x1920/1e293b/ffffff?text=Background+Image+Missing'" />
-        <!-- Dark gradient overlay to ensure text readability -->
-        <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70"></div>
-    </div>
-
-    <!-- Main Content Container -->
-    <div id="signage-container" class="relative z-10 flex flex-col justify-between w-full h-full px-12 py-16">
+    <div id="signage-container">
+        <div class="overlay"></div>
         
-        <!-- Header Section -->
-        <header class="flex flex-col items-center mt-4">
-            <!-- Resort Logo -->
-            <img src="HENANN PRIME Beach Resort Logo_white.png" alt="Resort Logo" class="w-10/12 max-w-[800px] object-contain drop-shadow-2xl mb-12" onerror="this.style.display='none'" />
-            
-            <div class="glass-panel rounded-[3rem] px-24 py-10 flex flex-col items-center w-full max-w-4xl">
-                <h1 id="clock-time" class="text-[9rem] font-bold tracking-tighter leading-none drop-shadow-lg mb-2">--:--</h1>
-                <h2 id="current-date" class="text-4xl font-medium text-white/90 uppercase tracking-[0.3em] mb-8">Loading Date...</h2>
-                <div class="flex items-center text-5xl font-semibold text-white/90 bg-white/10 px-10 py-4 rounded-full">
-                    <i data-lucide="map-pin" class="w-12 h-12 mr-4"></i>
-                    <span id="location-name">Locating...</span>
+        <div class="content-layer">
+            <!-- Header: Logo & Clock -->
+            <div class="flex justify-between items-center mb-16">
+                <!-- Hardcoded logo from GitHub -->
+                <img src="https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/HENANN%20PRIME%20Beach%20Resort%20Logo_white.png" alt="Henann Prime Logo" class="h-24 object-contain">
+                <div class="text-right">
+                    <h1 id="time" class="text-7xl font-bold tracking-tight mb-2">--:--</h1>
+                    <p id="date" class="text-3xl font-light text-gray-200">Loading date...</p>
                 </div>
             </div>
-        </header>
 
-        <!-- Main Weather Section -->
-        <main class="flex flex-col items-center justify-center flex-1 w-full my-8">
-            <div class="glass-panel w-full max-w-4xl p-16 rounded-[4rem] flex flex-col items-center">
+            <!-- Main Current Weather -->
+            <div class="glass-panel text-center mb-12 mt-8 flex-grow flex flex-col justify-center">
+                <h2 class="text-4xl font-medium tracking-widest uppercase mb-4 text-gray-300">Boracay, Philippines</h2>
+                <div class="flex items-center justify-center gap-8 mb-6">
+                    <i id="current-icon" data-lucide="sun" class="w-40 h-40"></i>
+                    <span id="current-temp" class="text-[12rem] font-bold leading-none">--°</span>
+                </div>
+                <p id="current-desc" class="text-5xl font-light mb-8 capitalize">Loading...</p>
                 
-                <div class="flex items-center justify-center space-x-12 mb-6">
-                    <div id="weather-icon-container">
-                        <i data-lucide="sun" class="w-48 h-48 text-white drop-shadow-2xl"></i>
+                <div class="flex justify-center gap-16 text-3xl font-light border-t border-white/20 pt-8">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="thermometer" class="w-8 h-8"></i>
+                        <span>High: <span id="temp-high" class="font-medium">--°</span></span>
                     </div>
-                    <div class="flex items-start">
-                        <span id="current-temp" class="text-[12rem] font-bold tracking-tighter leading-none">--</span>
-                        <span class="text-7xl font-light mt-6">°C</span>
-                    </div>
-                </div>
-
-                <h3 id="weather-desc" class="text-6xl font-semibold capitalize tracking-tight mb-12 text-center text-white/95">--</h3>
-                
-                <!-- High / Low -->
-                <div class="flex items-center space-x-16 text-5xl font-medium bg-black/30 px-16 py-6 rounded-full mb-16 border border-white/10">
-                    <div class="flex items-center text-blue-300">
-                        <i data-lucide="arrow-down" class="w-12 h-12 mr-3"></i>
-                        <span id="temp-low">--°</span>
-                    </div>
-                    <div class="w-px h-12 bg-white/30"></div>
-                    <div class="flex items-center text-red-300">
-                        <i data-lucide="arrow-up" class="w-12 h-12 mr-3"></i>
-                        <span id="temp-high">--°</span>
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="thermometer-snowflake" class="w-8 h-8"></i>
+                        <span>Low: <span id="temp-low" class="font-medium">--°</span></span>
                     </div>
                 </div>
-
-                <!-- Secondary Metrics -->
-                <div class="grid grid-cols-2 gap-8 w-full">
-                    <div class="glass-panel-light rounded-[2rem] p-8 flex items-center justify-center">
-                        <i data-lucide="wind" class="w-16 h-16 text-white/80 mr-6"></i>
-                        <div class="flex flex-col">
-                            <span class="text-2xl text-white/60 uppercase tracking-widest font-semibold mb-1">Wind</span>
-                            <span id="wind-data" class="text-4xl font-bold">-- km/h</span>
-                        </div>
-                    </div>
-                    <div class="glass-panel-light rounded-[2rem] p-8 flex items-center justify-center">
-                        <i data-lucide="droplets" class="w-16 h-16 text-blue-300/80 mr-6"></i>
-                        <div class="flex flex-col">
-                            <span class="text-2xl text-white/60 uppercase tracking-widest font-semibold mb-1">Humidity</span>
-                            <span id="humidity-data" class="text-4xl font-bold">--%</span>
-                        </div>
-                    </div>
-                </div>
-
             </div>
-        </main>
 
-        <!-- 5-Day Forecast Footer -->
-        <footer class="w-full max-w-4xl mx-auto mb-8">
-            <div class="glass-panel rounded-[3rem] p-10">
-                <h4 class="text-3xl font-bold uppercase tracking-widest text-white/80 mb-8 text-center">5-Day Forecast</h4>
-                <div id="forecast-container" class="grid grid-cols-5 gap-4">
+            <!-- Details -->
+            <div class="grid grid-cols-2 gap-8 mb-12">
+                <div class="glass-panel flex flex-col items-center justify-center py-10">
+                    <i data-lucide="wind" class="w-16 h-16 mb-4 text-blue-300"></i>
+                    <span class="text-2xl text-gray-300 uppercase tracking-widest mb-2">Wind</span>
+                    <span id="wind-speed" class="text-5xl font-semibold">-- km/h</span>
+                </div>
+                <div class="glass-panel flex flex-col items-center justify-center py-10">
+                    <i data-lucide="droplets" class="w-16 h-16 mb-4 text-blue-300"></i>
+                    <span class="text-2xl text-gray-300 uppercase tracking-widest mb-2">Humidity</span>
+                    <span id="humidity" class="text-5xl font-semibold">--%</span>
+                </div>
+            </div>
+
+            <!-- 5 Day Forecast -->
+            <div class="glass-panel mt-auto">
+                <h3 class="text-3xl font-medium tracking-widest text-center mb-8 uppercase text-gray-300">5-Day Forecast</h3>
+                <div id="forecast-container" class="flex justify-between items-center px-4">
                     <!-- Forecast items injected via JS -->
                 </div>
             </div>
-        </footer>
-    </div>
-
-    <!-- Fullscreen Loading Overlay -->
-    <div id="loading-overlay" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-md transition-opacity duration-500">
-        <div class="loader mb-12"></div>
-        <h2 class="text-5xl font-light tracking-widest text-white">INITIALIZING</h2>
-        <p class="text-2xl text-white/50 mt-4">Connecting to satellite data...</p>
-    </div>
-
-    <!-- Fullscreen Error Overlay -->
-    <div id="error-overlay" class="absolute inset-0 z-50 hidden flex-col items-center justify-center bg-red-950/95 backdrop-blur-xl">
-        <i data-lucide="alert-triangle" class="w-48 h-48 text-red-500 mb-12"></i>
-        <h2 class="text-7xl font-bold text-white mb-6">System Offline</h2>
-        <p id="error-message" class="text-4xl text-white/70 max-w-3xl text-center leading-relaxed mb-16">Unable to establish connection.</p>
-        <button onclick="initApp()" class="px-16 py-8 text-4xl font-semibold bg-white text-red-900 rounded-full">Retry Connection</button>
+        </div>
     </div>
 
     <script>
-        // Initialize Icons
+        // Initialize Lucide icons
         lucide.createIcons();
 
-        // DOM Element References
-        const els = {
-            time: document.getElementById('clock-time'),
-            date: document.getElementById('current-date'),
-            location: document.getElementById('location-name'),
-            temp: document.getElementById('current-temp'),
-            desc: document.getElementById('weather-desc'),
-            high: document.getElementById('temp-high'),
-            low: document.getElementById('temp-low'),
-            wind: document.getElementById('wind-data'),
-            humidity: document.getElementById('humidity-data'),
-            forecast: document.getElementById('forecast-container'),
-            iconContainer: document.getElementById('weather-icon-container'),
-            loading: document.getElementById('loading-overlay'),
-            error: document.getElementById('error-overlay'),
-            errMsg: document.getElementById('error-message')
-        };
+        // Hardcoded Coordinates for Henann Prime Beach Resort, Boracay
+        const LATITUDE = 11.97;
+        const LONGITUDE = 121.92;
 
-        // WMO Weather Mapping to Lucide Icons
-        const weatherMap = {
-            0: { desc: 'Clear Sky', icon: 'sun' },
-            1: { desc: 'Mainly Clear', icon: 'sun' },
-            2: { desc: 'Partly Cloudy', icon: 'cloud-sun' },
-            3: { desc: 'Overcast', icon: 'cloud' },
-            45: { desc: 'Fog', icon: 'cloud-fog' },
-            48: { desc: 'Depositing Rime Fog', icon: 'cloud-fog' },
-            51: { desc: 'Light Drizzle', icon: 'cloud-drizzle' },
-            53: { desc: 'Moderate Drizzle', icon: 'cloud-drizzle' },
-            55: { desc: 'Dense Drizzle', icon: 'cloud-drizzle' },
-            56: { desc: 'Light Freezing Drizzle', icon: 'cloud-snow' },
-            57: { desc: 'Dense Freezing Drizzle', icon: 'cloud-snow' },
-            61: { desc: 'Slight Rain', icon: 'cloud-rain' },
-            63: { desc: 'Moderate Rain', icon: 'cloud-rain' },
-            65: { desc: 'Heavy Rain', icon: 'cloud-rain' },
-            66: { desc: 'Light Freezing Rain', icon: 'cloud-snow' },
-            67: { desc: 'Heavy Freezing Rain', icon: 'cloud-snow' },
-            71: { desc: 'Slight Snow Fall', icon: 'snowflake' },
-            73: { desc: 'Moderate Snow Fall', icon: 'snowflake' },
-            75: { desc: 'Heavy Snow Fall', icon: 'snowflake' },
-            77: { desc: 'Snow Grains', icon: 'snowflake' },
-            80: { desc: 'Slight Rain Showers', icon: 'cloud-rain' },
-            81: { desc: 'Moderate Rain Showers', icon: 'cloud-rain' },
-            82: { desc: 'Violent Rain Showers', icon: 'cloud-rain' },
-            85: { desc: 'Slight Snow Showers', icon: 'snowflake' },
-            86: { desc: 'Heavy Snow Showers', icon: 'snowflake' },
-            95: { desc: 'Thunderstorm', icon: 'cloud-lightning' },
-            96: { desc: 'Thunderstorm with Slight Hail', icon: 'cloud-lightning' },
-            99: { desc: 'Thunderstorm with Heavy Hail', icon: 'cloud-lightning' }
-        };
-
+        // Clock Update Logic
         function updateClock() {
             const now = new Date();
-            let hours = now.getHours();
-            const minutes = now.getMinutes().toString().padStart(2, '0');
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            
-            hours = hours % 12;
-            hours = hours ? hours : 12; // Handle midnight
-            
-            els.time.textContent = `${hours}:${minutes} ${ampm}`;
-            
-            const dateOptions = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
-            els.date.textContent = now.toLocaleDateString('en-US', dateOptions);
+            document.getElementById('time').innerText = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            document.getElementById('date').innerText = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
         }
-        
         setInterval(updateClock, 1000);
         updateClock();
 
-        function getWindDirection(degree) {
-            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-            const index = Math.round(((degree %= 360) < 0 ? degree + 360 : degree) / 45) % 8;
-            return directions[index];
-        }
-
-        const getShortDayName = (dateString, isToday) => {
-            if (isToday) return "TODAY";
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+        // WMO Weather Codes to Lucide Icons & Descriptions
+        const weatherCodes = {
+            0: { icon: 'sun', desc: 'Clear sky' },
+            1: { icon: 'sun', desc: 'Mainly clear' },
+            2: { icon: 'cloud-sun', desc: 'Partly cloudy' },
+            3: { icon: 'cloud', desc: 'Overcast' },
+            45: { icon: 'cloud-fog', desc: 'Fog' },
+            48: { icon: 'cloud-fog', desc: 'Depositing rime fog' },
+            51: { icon: 'cloud-drizzle', desc: 'Light drizzle' },
+            53: { icon: 'cloud-drizzle', desc: 'Moderate drizzle' },
+            55: { icon: 'cloud-drizzle', desc: 'Dense drizzle' },
+            61: { icon: 'cloud-rain', desc: 'Slight rain' },
+            63: { icon: 'cloud-rain', desc: 'Moderate rain' },
+            65: { icon: 'cloud-rain', desc: 'Heavy rain' },
+            71: { icon: 'cloud-snow', desc: 'Slight snow' },
+            73: { icon: 'cloud-snow', desc: 'Moderate snow' },
+            75: { icon: 'cloud-snow', desc: 'Heavy snow' },
+            77: { icon: 'snowflake', desc: 'Snow grains' },
+            80: { icon: 'cloud-rain', desc: 'Slight rain showers' },
+            81: { icon: 'cloud-rain', desc: 'Moderate rain showers' },
+            82: { icon: 'cloud-lightning', desc: 'Violent rain showers' },
+            95: { icon: 'cloud-lightning', desc: 'Thunderstorm' },
+            96: { icon: 'cloud-lightning', desc: 'Thunderstorm with hail' },
+            99: { icon: 'cloud-lightning', desc: 'Heavy thunderstorm' }
         };
 
-        async function fetchLocationName(lat, lon) {
+        // Fetch Weather Data instantly on load
+        async function fetchWeather() {
             try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`);
-                if (!res.ok) throw new Error("Geocoding failed");
-                const data = await res.json();
-                return data.address.city || data.address.town || data.address.municipality || data.address.state || "Current Location";
-            } catch (err) {
-                console.error(err);
-                return "Current Location";
-            }
-        }
+                // Open-Meteo API using hardcoded Boracay coordinates
+                const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LATITUDE}&longitude=${LONGITUDE}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia%2FManila`);
+                const weatherData = await weatherRes.json();
 
-        async function fetchWeatherData(lat, lon) {
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,is_day,weather_code,wind_speed_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`;
-            const res = await fetch(url);
-            if (!res.ok) throw new Error("Weather API failed");
-            return await res.json();
-        }
-
-        function renderForecast(dailyData) {
-            els.forecast.innerHTML = ''; 
-            
-            // Render next 5 days
-            for (let i = 0; i < 5; i++) {
-                const dayDate = dailyData.time[i];
-                const max = Math.round(dailyData.temperature_2m_max[i]);
-                const min = Math.round(dailyData.temperature_2m_min[i]);
-                const code = dailyData.weather_code[i];
-                const weatherInfo = weatherMap[code] || weatherMap[0];
-                const dayName = getShortDayName(dayDate, i === 0);
-
-                const item = document.createElement('div');
-                item.className = 'flex flex-col items-center justify-center p-4 bg-white/5 rounded-2xl border border-white/5';
-                item.innerHTML = `
-                    <span class="text-2xl font-semibold text-white/70 mb-4 tracking-widest">${dayName}</span>
-                    <i data-lucide="${weatherInfo.icon}" class="w-14 h-14 text-white mb-4"></i>
-                    <div class="flex items-center space-x-3 text-3xl font-bold">
-                        <span class="text-white">${max}°</span>
-                        <span class="text-white/40">${min}°</span>
-                    </div>
-                `;
-                els.forecast.appendChild(item);
-            }
-            lucide.createIcons(); // re-init icons for injected HTML
-        }
-
-        async function updateDashboard(lat, lon) {
-            try {
-                const [locationName, weatherData] = await Promise.all([
-                    fetchLocationName(lat, lon),
-                    fetchWeatherData(lat, lon)
-                ]);
-
-                // Render Location
-                els.location.textContent = locationName;
-
-                // Render Current Weather
+                // Update Current Weather
                 const current = weatherData.current;
-                const daily = weatherData.daily;
-                const code = current.weather_code;
-                let info = weatherMap[code] || weatherMap[0];
+                const today = weatherData.daily;
+                const condition = weatherCodes[current.weather_code] || weatherCodes[0];
 
-                // Adjust for night
-                if (current.is_day === 0 && [0, 1, 2].includes(code)) {
-                    info = { ...info, icon: code === 2 ? 'cloud-moon' : 'moon' };
+                document.getElementById('current-temp').innerText = Math.round(current.temperature_2m) + '°';
+                document.getElementById('current-desc').innerText = condition.desc;
+                document.getElementById('temp-high').innerText = Math.round(today.temperature_2m_max[0]) + '°';
+                document.getElementById('temp-low').innerText = Math.round(today.temperature_2m_min[0]) + '°';
+                document.getElementById('wind-speed').innerText = Math.round(current.wind_speed_10m) + ' km/h';
+                document.getElementById('humidity').innerText = current.relative_humidity_2m + '%';
+
+                // Update Main Icon
+                const iconContainer = document.getElementById('current-icon');
+                iconContainer.setAttribute('data-lucide', condition.icon);
+
+                // Update 5-Day Forecast
+                const forecastContainer = document.getElementById('forecast-container');
+                forecastContainer.innerHTML = ''; // Clear loading state
+                
+                // Loop through days 1 to 5 (skipping today which is index 0)
+                for (let i = 1; i <= 5; i++) {
+                    const date = new Date(today.time[i]);
+                    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+                    const dayCode = today.weather_code[i];
+                    const dayIcon = weatherCodes[dayCode] ? weatherCodes[dayCode].icon : 'sun';
+                    const tempMax = Math.round(today.temperature_2m_max[i]);
+                    const tempMin = Math.round(today.temperature_2m_min[i]);
+
+                    const dayHTML = `
+                        <div class="flex flex-col items-center">
+                            <span class="text-2xl font-medium mb-4">${dayName}</span>
+                            <i data-lucide="${dayIcon}" class="w-14 h-14 mb-4"></i>
+                            <span class="text-2xl font-semibold">${tempMax}°</span>
+                            <span class="text-xl text-gray-400">${tempMin}°</span>
+                        </div>
+                    `;
+                    forecastContainer.innerHTML += dayHTML;
                 }
 
-                els.temp.textContent = Math.round(current.temperature_2m);
-                els.desc.textContent = info.desc;
-                els.high.textContent = Math.round(daily.temperature_2m_max[0]) + '°';
-                els.low.textContent = Math.round(daily.temperature_2m_min[0]) + '°';
-                
-                const windDir = getWindDirection(current.wind_direction_10m);
-                els.wind.textContent = `${Math.round(current.wind_speed_10m)} km/h ${windDir}`;
-                els.humidity.textContent = `${current.relative_humidity_2m}%`;
+                // Re-initialize icons for newly injected HTML
+                lucide.createIcons();
 
-                // Render Main Icon
-                els.iconContainer.innerHTML = `<i data-lucide="${info.icon}" class="w-48 h-48 text-white drop-shadow-2xl"></i>`;
-
-                // Render 5-Day
-                renderForecast(daily);
-
-                // Hide loading overlay smoothly
-                els.loading.style.opacity = '0';
-                setTimeout(() => els.loading.classList.add('hidden'), 500);
-                
-            } catch (err) {
-                console.error(err);
-                showError("Weather service unavailable. Retrying shortly.");
+            } catch (error) {
+                console.error("Error fetching weather:", error);
+                document.getElementById('current-desc').innerText = "Weather unavailable";
             }
         }
 
-        function showError(msg) {
-            els.loading.classList.add('hidden');
-            els.error.classList.remove('hidden');
-            els.error.classList.add('flex');
-            els.errMsg.textContent = msg;
-        }
+        // Fetch immediately, then update every 30 minutes
+        fetchWeather();
+        setInterval(fetchWeather, 30 * 60 * 1000);
 
-        function initApp() {
-            els.error.classList.add('hidden');
-            els.error.classList.remove('flex');
-            els.loading.classList.remove('hidden');
-            els.loading.style.opacity = '1';
-
-            if (!navigator.geolocation) {
-                showError("Hardware geolocation not supported.");
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
-                (pos) => updateDashboard(pos.coords.latitude, pos.coords.longitude),
-                (err) => {
-                    let msg = "Cannot determine location.";
-                    if (err.code === 1) msg = "Location access denied by system settings.";
-                    if (err.code === 2) msg = "GPS signal lost or unavailable.";
-                    if (err.code === 3) msg = "Satellite connection timed out.";
-                    showError(msg);
-                },
-                { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
-            );
-        }
-
-        // Boot system on load
-        window.addEventListener('load', initApp);
-        
-        // Auto-refresh every 30 minutes to maintain unattended digital signage accuracy
-        setInterval(initApp, 30 * 60 * 1000);
     </script>
 </body>
 </html>
