@@ -1,221 +1,350 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resort Digital Signage - Weather</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resort Digital Signage - Weather</title>
 
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #000;
-            margin: 0;
-            overflow: hidden; /* Strictly no scrolling for signage */
-            user-select: none;
-        }
+<!-- Start network connections early -->
+<link rel="preconnect" href="https://raw.githubusercontent.com">
+<link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
 
-        #signage-container {
-            width: 100vw;
-            height: 100vh;
-            max-width: 1080px;
-            max-height: 1920px;
-            margin: 0 auto;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            background-image: url('https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/East%20Wing.jpg');
-            background-size: cover;
-            background-position: center;
-        }
+<!-- Fetch the two heavy images at top priority -->
+<link rel="preload" as="image" href="https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/East%20Wing.jpg" fetchpriority="high">
+<link rel="preload" as="image" href="https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/HENANN%20PRIME%20Beach%20Resort%20Logo_white.png" fetchpriority="high">
 
-        .overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.75) 100%);
-            z-index: 1;
-        }
+<!-- Inter loads without blocking first paint; system fonts show until it arrives -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"></noscript>
 
-        .content-layer {
-            position: relative;
-            z-index: 2;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 3rem 3.5rem;
-            color: white;
-            box-sizing: border-box;
-        }
+<style>
+  /* Hand-written CSS replaces the Tailwind CDN (which compiles styles in the browser on every load) */
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:#000;color:#fff;overflow:hidden;user-select:none;
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  #signage{
+    width:100vw;height:100vh;max-width:1080px;max-height:1920px;margin:0 auto;
+    position:relative;overflow:hidden;
+    background:linear-gradient(#0b2a3a,#04121b); /* shows instantly while the photo downloads */
+  }
+  .bg{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;
+    opacity:0;transition:opacity .8s ease;
+  }
+  .bg.on{opacity:1}
+  .overlay{
+    position:absolute;inset:0;z-index:1;
+    background:linear-gradient(to bottom,rgba(0,0,0,.5) 0%,rgba(0,0,0,.75) 100%);
+  }
+  .content{
+    position:relative;z-index:2;height:100%;
+    display:flex;flex-direction:column;justify-content:space-between;
+    padding:3rem 3.5rem;
+  }
+  .glass{
+    background:rgba(255,255,255,.1);
+    -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    border:1px solid rgba(255,255,255,.25);
+    border-radius:28px;padding:2.2rem 2.5rem;
+    box-shadow:0 25px 50px -12px rgba(0,0,0,.6);
+    margin:.5rem 0;
+  }
+  .ic{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 28px;
-            padding: 2.2rem 2.5rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
-        }
-    </style>
+  header{display:flex;justify-content:space-between;align-items:center}
+  .logo{height:11rem;width:auto;object-fit:contain;filter:drop-shadow(0 10px 8px rgba(0,0,0,.3))}
+  .clock{text-align:right}
+  #time{margin:0 0 .25rem;font-size:3.75rem;line-height:1;font-weight:700;letter-spacing:-.025em}
+  #date{margin:0;font-size:1.5rem;font-weight:300;color:#e5e7eb}
+
+  .now{text-align:center;display:flex;flex-direction:column;justify-content:center}
+  .place{margin:0 0 .5rem;font-size:1.875rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#d1d5db}
+  .temp-row{display:flex;align-items:center;justify-content:center;gap:1.5rem;margin-bottom:.5rem}
+  #current-icon{width:8rem;height:8rem}
+  #current-temp{font-size:10rem;font-weight:700;line-height:1;letter-spacing:-.05em}
+  #current-desc{margin:0 0 1rem;font-size:2.25rem;font-weight:300}
+  .hilo{display:flex;justify-content:center;gap:3rem;font-size:1.5rem;font-weight:300;border-top:1px solid rgba(255,255,255,.2);padding-top:1rem}
+  .hilo div{display:flex;align-items:center;gap:.5rem}
+  .hilo .ic{width:1.75rem;height:1.75rem}
+  .hilo b{font-weight:500}
+
+  .details{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem;margin:.5rem 0}
+  .details .glass{margin:0;padding:1.5rem .75rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  .details .ic{width:3rem;height:3rem;margin-bottom:.5rem;color:#93c5fd}
+  .label{font-size:1.1rem;color:#d1d5db;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.25rem;white-space:nowrap}
+  .value{font-size:2rem;font-weight:600;white-space:nowrap}
+
+  .fc-title{margin:0 0 1rem;font-size:1.5rem;font-weight:500;letter-spacing:.1em;text-align:center;text-transform:uppercase;color:#d1d5db}
+  #forecast{display:flex;justify-content:space-between;align-items:center;padding:0 .5rem}
+  .day{display:flex;flex-direction:column;align-items:center}
+  .day .dn{font-size:1.25rem;font-weight:500;margin-bottom:.5rem}
+  .day .ic{width:2.5rem;height:2.5rem;margin-bottom:.5rem}
+  .day .hi{font-size:1.25rem;font-weight:600}
+  .day .lo{font-size:1.125rem;color:#d1d5db}
+  .day .rain{margin-top:.35rem;font-size:1rem;color:#93c5fd}
+  #updated{margin:1.1rem 0 0;text-align:center;font-size:1rem;font-weight:300;color:#9ca3af}
+</style>
 </head>
 <body>
 
-    <div id="signage-container">
-        <div class="overlay"></div>
-        
-        <div class="content-layer">
-            <!-- Header: Logo & Clock -->
-            <div class="flex justify-between items-center">
-                <!-- Much larger resort logo -->
-                <img src="https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/HENANN%20PRIME%20Beach%20Resort%20Logo_white.png" alt="Henann Prime Logo" class="h-44 w-auto object-contain drop-shadow-lg">
-                <div class="text-right">
-                    <h1 id="time" class="text-6xl font-bold tracking-tight mb-1">--:--</h1>
-                    <p id="date" class="text-2xl font-light text-gray-200">Loading date...</p>
-                </div>
-            </div>
+<!-- Inline icon sprite (replaces the Lucide script from unpkg: no extra download, works offline) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-15.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+    <symbol id="i-cloud-sun" viewBox="0 0 24 24"><path d="M12 2v2m-7.07.93 1.41 1.41M20 12h2m-2.93-7.07-1.41 1.41M15.947 12.65a4 4 0 0 0-5.925-4.128M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/></symbol>
+    <symbol id="i-cloud-moon" viewBox="0 0 24 24"><path d="M10.188 8.5A6 6 0 0 1 16 4a1 1 0 0 0 6 6 6 6 0 0 1-3 5.197M13 16a3 3 0 1 1 0 6H7a5 5 0 1 1 4.9-6Z"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></symbol>
+    <symbol id="i-cloud-fog" viewBox="0 0 24 24"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242M16 17H7m10 4H9"/></symbol>
+    <symbol id="i-cloud-drizzle" viewBox="0 0 24 24"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242M8 19v1m0-6v1m8 4v1m0-6v1m-4 6v1m0-6v1"/></symbol>
+    <symbol id="i-cloud-rain" viewBox="0 0 24 24"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242M16 14v6M8 14v6m4-4v6"/></symbol>
+    <symbol id="i-cloud-lightning" viewBox="0 0 24 24"><path d="M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973M13 12l-3 5h4l-3 5"/></symbol>
+    <symbol id="i-cloud-snow" viewBox="0 0 24 24"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242M8 15h.01M8 19h.01M12 17h.01M12 21h.01M16 15h.01M16 19h.01"/></symbol>
+    <symbol id="i-wind" viewBox="0 0 24 24"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2M9.6 4.6A2 2 0 1 1 11 8H2m10.6 11.4A2 2 0 1 0 14 16H2"/></symbol>
+    <symbol id="i-droplets" viewBox="0 0 24 24"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05zM12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/></symbol>
+    <symbol id="i-thermometer" viewBox="0 0 24 24"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></symbol>
+    <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></symbol>
+    <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14m7-7-7 7-7-7"/></symbol>
+    <symbol id="i-umbrella" viewBox="0 0 24 24"><path d="M22 12a10.06 10.06 1 0 0-20 0Zm-10 0v8a2 2 0 0 0 4 0M12 2v1"/></symbol>
+  </defs>
+</svg>
 
-            <!-- Main Current Weather -->
-            <div class="glass-panel text-center flex flex-col justify-center my-2">
-                <h2 class="text-3xl font-medium tracking-widest uppercase mb-2 text-gray-300">Boracay, Philippines</h2>
-                <div class="flex items-center justify-center gap-6 mb-2">
-                    <i id="current-icon" data-lucide="sun" class="w-32 h-32"></i>
-                    <span id="current-temp" class="text-[10rem] font-bold leading-none tracking-tighter">--°</span>
-                </div>
-                <p id="current-desc" class="text-4xl font-light mb-4 capitalize">Loading...</p>
-                
-                <div class="flex justify-center gap-12 text-2xl font-light border-t border-white/20 pt-4">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="thermometer" class="w-7 h-7"></i>
-                        <span>High: <span id="temp-high" class="font-medium">--°</span></span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="thermometer-snowflake" class="w-7 h-7"></i>
-                        <span>Low: <span id="temp-low" class="font-medium">--°</span></span>
-                    </div>
-                </div>
-            </div>
+<div id="signage">
+  <img class="bg" id="bg" alt="" fetchpriority="high" decoding="async"
+       src="https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/East%20Wing.jpg">
+  <div class="overlay"></div>
 
-            <!-- Details -->
-            <div class="grid grid-cols-2 gap-6 my-2">
-                <div class="glass-panel flex flex-col items-center justify-center py-6">
-                    <i data-lucide="wind" class="w-12 h-12 mb-2 text-blue-300"></i>
-                    <span class="text-xl text-gray-300 uppercase tracking-widest mb-1">Wind</span>
-                    <span id="wind-speed" class="text-4xl font-semibold">-- km/h</span>
-                </div>
-                <div class="glass-panel flex flex-col items-center justify-center py-6">
-                    <i data-lucide="droplets" class="w-12 h-12 mb-2 text-blue-300"></i>
-                    <span class="text-xl text-gray-300 uppercase tracking-widest mb-1">Humidity</span>
-                    <span id="humidity" class="text-4xl font-semibold">--%</span>
-                </div>
-            </div>
+  <div class="content">
+    <header>
+      <img class="logo" alt="Henann Prime Beach Resort" fetchpriority="high" decoding="async"
+           src="https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/HENANN%20PRIME%20Beach%20Resort%20Logo_white.png">
+      <div class="clock">
+        <h1 id="time">--:--</h1>
+        <p id="date">&nbsp;</p>
+      </div>
+    </header>
 
-            <!-- 5 Day Forecast -->
-            <div class="glass-panel my-2">
-                <h3 class="text-2xl font-medium tracking-widest text-center mb-4 uppercase text-gray-300">5-Day Forecast</h3>
-                <div id="forecast-container" class="flex justify-between items-center px-2">
-                    <!-- Forecast items injected via JS -->
-                </div>
-            </div>
-        </div>
-    </div>
+    <section class="glass now">
+      <h2 class="place">Boracay, Philippines</h2>
+      <div class="temp-row">
+        <svg class="ic" id="current-icon" viewBox="0 0 24 24"><use href="#i-sun"/></svg>
+        <span id="current-temp">--°</span>
+      </div>
+      <p id="current-desc">Loading...</p>
+      <div class="hilo">
+        <div><svg class="ic" viewBox="0 0 24 24"><use href="#i-arrow-up"/></svg><span>High: <b id="temp-high">--°</b></span></div>
+        <div><svg class="ic" viewBox="0 0 24 24"><use href="#i-arrow-down"/></svg><span>Low: <b id="temp-low">--°</b></span></div>
+      </div>
+    </section>
 
-    <script>
-        lucide.createIcons();
+    <section class="details">
+      <div class="glass">
+        <svg class="ic" viewBox="0 0 24 24"><use href="#i-wind"/></svg>
+        <span class="label">Wind</span><span class="value" id="wind-speed">--</span>
+      </div>
+      <div class="glass">
+        <svg class="ic" viewBox="0 0 24 24"><use href="#i-droplets"/></svg>
+        <span class="label">Humidity</span><span class="value" id="humidity">--%</span>
+      </div>
+      <div class="glass">
+        <svg class="ic" viewBox="0 0 24 24"><use href="#i-thermometer"/></svg>
+        <span class="label">Feels like</span><span class="value" id="feels">--°</span>
+      </div>
+      <div class="glass">
+        <svg class="ic" viewBox="0 0 24 24"><use href="#i-umbrella"/></svg>
+        <span class="label">Rain today</span><span class="value" id="rain-today">--%</span>
+      </div>
+    </section>
 
-        // Hardcoded Coordinates for Henann Prime Beach Resort, Boracay
-        const LATITUDE = 11.97;
-        const LONGITUDE = 121.92;
+    <section class="glass">
+      <h3 class="fc-title">5-Day Forecast</h3>
+      <div id="forecast"></div>
+      <p id="updated"></p>
+    </section>
+  </div>
+</div>
 
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('time').innerText = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-            document.getElementById('date').innerText = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
+<script>
+(() => {
+  'use strict';
 
-        const weatherCodes = {
-            0: { icon: 'sun', desc: 'Clear sky' },
-            1: { icon: 'sun', desc: 'Mainly clear' },
-            2: { icon: 'cloud-sun', desc: 'Partly cloudy' },
-            3: { icon: 'cloud', desc: 'Overcast' },
-            45: { icon: 'cloud-fog', desc: 'Fog' },
-            48: { icon: 'cloud-fog', desc: 'Depositing rime fog' },
-            51: { icon: 'cloud-drizzle', desc: 'Light drizzle' },
-            53: { icon: 'cloud-drizzle', desc: 'Moderate drizzle' },
-            55: { icon: 'cloud-drizzle', desc: 'Dense drizzle' },
-            61: { icon: 'cloud-rain', desc: 'Slight rain' },
-            63: { icon: 'cloud-rain', desc: 'Moderate rain' },
-            65: { icon: 'cloud-rain', desc: 'Heavy rain' },
-            71: { icon: 'cloud-snow', desc: 'Slight snow' },
-            73: { icon: 'cloud-snow', desc: 'Moderate snow' },
-            75: { icon: 'cloud-snow', desc: 'Heavy snow' },
-            77: { icon: 'snowflake', desc: 'Snow grains' },
-            80: { icon: 'cloud-rain', desc: 'Slight rain showers' },
-            81: { icon: 'cloud-rain', desc: 'Moderate rain showers' },
-            82: { icon: 'cloud-lightning', desc: 'Violent rain showers' },
-            95: { icon: 'cloud-lightning', desc: 'Thunderstorm' },
-            96: { icon: 'cloud-lightning', desc: 'Thunderstorm with hail' },
-            99: { icon: 'cloud-lightning', desc: 'Heavy thunderstorm' }
-        };
+  // ---- Config -------------------------------------------------------------
+  const LAT = 11.97, LON = 121.92;          // Boracay
+  const TZ = 'Asia/Manila';                 // Clock + forecast days always follow resort time
+  const REFRESH_MS = 15 * 60 * 1000;        // Open-Meteo "current" data updates every 15 min
+  const RETRY_MS = 60 * 1000;               // Retry quickly after a failure
+  const FETCH_TIMEOUT_MS = 10 * 1000;
+  const MAX_CACHE_AGE_MS = 3 * 60 * 60 * 1000; // Never show weather older than 3 h
+  const CACHE_KEY = 'hprime-weather-v2';
 
-        async function fetchWeather() {
-            try {
-                const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LATITUDE}&longitude=${LONGITUDE}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia%2FManila`);
-                const weatherData = await weatherRes.json();
+  const API_URL = 'https://api.open-meteo.com/v1/forecast?' + new URLSearchParams({
+    latitude: LAT,
+    longitude: LON,
+    current: 'temperature_2m,apparent_temperature,relative_humidity_2m,is_day,weather_code,wind_speed_10m',
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
+    timezone: TZ,
+    forecast_days: 6,
+    wind_speed_unit: 'kmh'
+  });
 
-                const current = weatherData.current;
-                const today = weatherData.daily;
-                const condition = weatherCodes[current.weather_code] || weatherCodes[0];
+  // ---- Helpers ------------------------------------------------------------
+  const $ = id => document.getElementById(id);
+  const el = {
+    bg: $('bg'), time: $('time'), date: $('date'),
+    icon: $('current-icon'), temp: $('current-temp'), desc: $('current-desc'),
+    hi: $('temp-high'), lo: $('temp-low'), wind: $('wind-speed'), hum: $('humidity'),
+    feels: $('feels'), rain: $('rain-today'), fc: $('forecast'), updated: $('updated')
+  };
 
-                document.getElementById('current-temp').innerText = Math.round(current.temperature_2m) + '°';
-                document.getElementById('current-desc').innerText = condition.desc;
-                document.getElementById('temp-high').innerText = Math.round(today.temperature_2m_max[0]) + '°';
-                document.getElementById('temp-low').innerText = Math.round(today.temperature_2m_min[0]) + '°';
-                document.getElementById('wind-speed').innerText = Math.round(current.wind_speed_10m) + ' km/h';
-                document.getElementById('humidity').innerText = current.relative_humidity_2m + '%';
+  // Background fades in once loaded (handles already-cached images too)
+  const showBg = () => el.bg.classList.add('on');
+  el.bg.complete ? showBg() : el.bg.addEventListener('load', showBg, { once: true });
 
-                const iconContainer = document.getElementById('current-icon');
-                iconContainer.setAttribute('data-lucide', condition.icon);
+  const num = v => (typeof v === 'number' && isFinite(v)) ? Math.round(v) : null;
+  const deg = v => (num(v) === null ? '--°' : num(v) + '°');
+  const pct = v => (num(v) === null ? '--%' : num(v) + '%');
+  const setIcon = (svg, name) => svg.firstElementChild.setAttribute('href', '#i-' + name);
 
-                const forecastContainer = document.getElementById('forecast-container');
-                forecastContainer.innerHTML = '';
-                
-                for (let i = 1; i <= 5; i++) {
-                    const date = new Date(today.time[i]);
-                    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-                    const dayCode = today.weather_code[i];
-                    const dayIcon = weatherCodes[dayCode] ? weatherCodes[dayCode].icon : 'sun';
-                    const tempMax = Math.round(today.temperature_2m_max[i]);
-                    const tempMin = Math.round(today.temperature_2m_min[i]);
+  // ---- Clock (fixed to resort time, redraws only when the minute changes) -
+  const timeFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit', hour12: true });
+  const dateFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric' });
+  const dayFmt  = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short' });
 
-                    const dayHTML = `
-                        <div class="flex flex-col items-center">
-                            <span class="text-xl font-medium mb-2">${dayName}</span>
-                            <i data-lucide="${dayIcon}" class="w-10 h-10 mb-2"></i>
-                            <span class="text-xl font-semibold">${tempMax}°</span>
-                            <span class="text-lg text-gray-300">${tempMin}°</span>
-                        </div>
-                    `;
-                    forecastContainer.innerHTML += dayHTML;
-                }
+  function tickClock() {
+    const now = new Date();
+    el.time.textContent = timeFmt.format(now);
+    el.date.textContent = dateFmt.format(now);
+    setTimeout(tickClock, 60000 - (now.getSeconds() * 1000 + now.getMilliseconds()) + 50);
+  }
+  tickClock();
 
-                lucide.createIcons();
+  // ---- WMO weather codes (complete table, incl. freezing drizzle/rain) ----
+  // [description, day icon, night icon]
+  const WMO = {
+    0: ['Clear sky', 'sun', 'moon'],
+    1: ['Mainly clear', 'sun', 'moon'],
+    2: ['Partly cloudy', 'cloud-sun', 'cloud-moon'],
+    3: ['Overcast', 'cloud', 'cloud'],
+    45: ['Fog', 'cloud-fog', 'cloud-fog'],
+    48: ['Rime fog', 'cloud-fog', 'cloud-fog'],
+    51: ['Light drizzle', 'cloud-drizzle', 'cloud-drizzle'],
+    53: ['Moderate drizzle', 'cloud-drizzle', 'cloud-drizzle'],
+    55: ['Dense drizzle', 'cloud-drizzle', 'cloud-drizzle'],
+    56: ['Freezing drizzle', 'cloud-drizzle', 'cloud-drizzle'],
+    57: ['Freezing drizzle', 'cloud-drizzle', 'cloud-drizzle'],
+    61: ['Slight rain', 'cloud-rain', 'cloud-rain'],
+    63: ['Moderate rain', 'cloud-rain', 'cloud-rain'],
+    65: ['Heavy rain', 'cloud-rain', 'cloud-rain'],
+    66: ['Freezing rain', 'cloud-rain', 'cloud-rain'],
+    67: ['Freezing rain', 'cloud-rain', 'cloud-rain'],
+    71: ['Slight snow', 'cloud-snow', 'cloud-snow'],
+    73: ['Moderate snow', 'cloud-snow', 'cloud-snow'],
+    75: ['Heavy snow', 'cloud-snow', 'cloud-snow'],
+    77: ['Snow grains', 'cloud-snow', 'cloud-snow'],
+    80: ['Light rain showers', 'cloud-rain', 'cloud-rain'],
+    81: ['Rain showers', 'cloud-rain', 'cloud-rain'],
+    82: ['Heavy rain showers', 'cloud-rain', 'cloud-rain'],
+    85: ['Snow showers', 'cloud-snow', 'cloud-snow'],
+    86: ['Heavy snow showers', 'cloud-snow', 'cloud-snow'],
+    95: ['Thunderstorm', 'cloud-lightning', 'cloud-lightning'],
+    96: ['Thunderstorm with hail', 'cloud-lightning', 'cloud-lightning'],
+    99: ['Severe thunderstorm', 'cloud-lightning', 'cloud-lightning']
+  };
+  // Unknown code -> neutral cloud, never a misleading "sunny"
+  const lookup = (code, night) => {
+    const w = WMO[code] || ['Conditions unavailable', 'cloud', 'cloud'];
+    return { desc: w[0], icon: night ? w[2] : w[1] };
+  };
 
-            } catch (error) {
-                console.error("Error fetching weather:", error);
-                document.getElementById('current-desc').innerText = "Weather unavailable";
-            }
-        }
+  // ---- Render -------------------------------------------------------------
+  function render(data, fetchedAt) {
+    const c = data.current, d = data.daily;
+    const cond = lookup(c.weather_code, c.is_day === 0);
 
-        fetchWeather();
-        setInterval(fetchWeather, 30 * 60 * 1000);
-    </script>
+    el.temp.textContent = deg(c.temperature_2m);
+    el.desc.textContent = cond.desc;
+    setIcon(el.icon, cond.icon);
+    el.hi.textContent = deg(d.temperature_2m_max[0]);
+    el.lo.textContent = deg(d.temperature_2m_min[0]);
+    el.wind.textContent = (num(c.wind_speed_10m) === null ? '--' : num(c.wind_speed_10m)) + ' km/h';
+    el.hum.textContent = pct(c.relative_humidity_2m);
+    el.feels.textContent = deg(c.apparent_temperature);
+    el.rain.textContent = pct(d.precipitation_probability_max[0]);
+
+    // Forecast: tomorrow + next 4 days
+    let html = '';
+    for (let i = 1; i <= 5 && i < d.time.length; i++) {
+      const [y, m, day] = d.time[i].split('-').map(Number);
+      // Built as UTC so the weekday can never shift with the device's timezone
+      const name = dayFmt.format(new Date(Date.UTC(y, m - 1, day))).toUpperCase();
+      const icon = lookup(d.weather_code[i], false).icon;
+      html += '<div class="day">' +
+        '<span class="dn">' + name + '</span>' +
+        '<svg class="ic" viewBox="0 0 24 24"><use href="#i-' + icon + '"/></svg>' +
+        '<span class="hi">' + deg(d.temperature_2m_max[i]) + '</span>' +
+        '<span class="lo">' + deg(d.temperature_2m_min[i]) + '</span>' +
+        '<span class="rain">' + pct(d.precipitation_probability_max[i]) + '</span>' +
+        '</div>';
+    }
+    el.fc.innerHTML = html;
+
+    el.updated.textContent = 'Updated ' + timeFmt.format(new Date(fetchedAt));
+  }
+
+  // ---- Data: cache first for instant paint, then network ------------------
+  function readCache() {
+    try {
+      const c = JSON.parse(localStorage.getItem(CACHE_KEY));
+      if (c && c.data && Date.now() - c.t < MAX_CACHE_AGE_MS) return c;
+    } catch (e) {}
+    return null;
+  }
+  function writeCache(data) {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), data })); } catch (e) {}
+  }
+
+  let timer = null;
+  const schedule = ms => { clearTimeout(timer); timer = setTimeout(refresh, ms); };
+
+  async function refresh() {
+    let abort;
+    try {
+      // Timeout via Promise.race (an AbortSignal can't cross postMessage in sandboxed previews)
+      const timeout = new Promise((_, reject) => {
+        abort = setTimeout(() => reject(new Error('Timeout')), FETCH_TIMEOUT_MS);
+      });
+      const res = await Promise.race([fetch(API_URL, { cache: 'no-store' }), timeout]);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (!data.current || !data.daily) throw new Error('Bad payload');
+      writeCache(data);
+      render(data, Date.now());
+      schedule(REFRESH_MS);
+    } catch (err) {
+      console.error('Weather fetch failed:', err);
+      // Keep whatever is on screen if it is still fresh; otherwise say so honestly
+      const cached = readCache();
+      if (cached) render(cached.data, cached.t);
+      else { el.desc.textContent = 'Weather unavailable'; el.updated.textContent = ''; }
+      schedule(RETRY_MS);
+    } finally {
+      clearTimeout(abort);
+    }
+  }
+
+  const cached = readCache();
+  if (cached) render(cached.data, cached.t);
+  refresh();
+
+  // If the player wakes from sleep or the network returns, update right away
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+  window.addEventListener('online', refresh);
+})();
+</script>
 </body>
 </html>
