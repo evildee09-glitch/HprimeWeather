@@ -5,19 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Resort Digital Signage - Weather</title>
 
-<!-- Start network connections early -->
-<link rel="preconnect" href="https://raw.githubusercontent.com">
 <link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
-
-<!-- Fetch the two heavy images at top priority -->
-<link rel="preload" as="image" href="https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/East%20Wing.jpg" fetchpriority="high">
-<link rel="preload" as="image" href="https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/HENANN%20PRIME%20Beach%20Resort%20Logo_white.png" fetchpriority="high">
-
-<!-- Inter loads without blocking first paint; system fonts show until it arrives -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"></noscript>
 
 <style>
   /* Hand-written CSS replaces the Tailwind CDN (which compiles styles in the browser on every load) */
@@ -25,7 +13,7 @@
   html,body{height:100%}
   body{
     margin:0;background:#000;color:#fff;overflow:hidden;user-select:none;
-    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   }
   #signage{
     width:100vw;height:100vh;max-width:1080px;max-height:1920px;margin:0 auto;
@@ -115,14 +103,17 @@
 </svg>
 
 <div id="signage">
+  <!-- Local file first (bg.jpg next to this page); falls back to GitHub if it is missing -->
   <img class="bg" id="bg" alt="" fetchpriority="high" decoding="async"
-       src="https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/East%20Wing.jpg">
+       src="bg.jpg"
+       onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/East%20Wing.jpg'">
   <div class="overlay"></div>
 
   <div class="content">
     <header>
       <img class="logo" alt="Henann Prime Beach Resort" fetchpriority="high" decoding="async"
-           src="https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/HENANN%20PRIME%20Beach%20Resort%20Logo_white.png">
+           src="logo.png"
+           onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/HENANN%20PRIME%20Beach%20Resort%20Logo_white.png'">
       <div class="clock">
         <h1 id="time">--:--</h1>
         <p id="date">&nbsp;</p>
@@ -177,9 +168,10 @@
   const LAT = 11.97, LON = 121.92;          // Boracay
   const TZ = 'Asia/Manila';                 // Clock + forecast days always follow resort time
   const REFRESH_MS = 15 * 60 * 1000;        // Open-Meteo "current" data updates every 15 min
-  const RETRY_MS = 60 * 1000;               // Retry quickly after a failure
-  const FETCH_TIMEOUT_MS = 10 * 1000;
-  const MAX_CACHE_AGE_MS = 3 * 60 * 60 * 1000; // Never show weather older than 3 h
+  const RETRY_MS = 60 * 1000;               // First retry after 1 min, doubling up to 5 min
+  const FETCH_TIMEOUT_MS = 20 * 1000;      // generous for slow wifi
+  const MAX_CACHE_AGE_MS = 6 * 60 * 60 * 1000; // Keep showing last known weather for up to 6 h offline
+  const STALE_AFTER_MS = 45 * 60 * 1000;       // Label data "last known" after this
   const CACHE_KEY = 'hprime-weather-v2';
 
   const API_URL = 'https://api.open-meteo.com/v1/forecast?' + new URLSearchParams({
@@ -203,7 +195,8 @@
 
   // Background fades in once loaded (handles already-cached images too)
   const showBg = () => el.bg.classList.add('on');
-  el.bg.complete ? showBg() : el.bg.addEventListener('load', showBg, { once: true });
+  el.bg.addEventListener('load', showBg);
+  if (el.bg.complete && el.bg.naturalWidth) showBg();
 
   const num = v => (typeof v === 'number' && isFinite(v)) ? Math.round(v) : null;
   const deg = v => (num(v) === null ? '--°' : num(v) + '°');
@@ -293,7 +286,8 @@
     }
     el.fc.innerHTML = html;
 
-    el.updated.textContent = 'Updated ' + timeFmt.format(new Date(fetchedAt));
+    const stale = Date.now() - fetchedAt > STALE_AFTER_MS;
+    el.updated.textContent = (stale ? 'Last known weather, updated ' : 'Updated ') + timeFmt.format(new Date(fetchedAt));
   }
 
   // ---- Data: cache first for instant paint, then network ------------------
@@ -308,7 +302,7 @@
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), data })); } catch (e) {}
   }
 
-  let timer = null;
+  let timer = null, failures = 0;
   const schedule = ms => { clearTimeout(timer); timer = setTimeout(refresh, ms); };
 
   async function refresh() {
@@ -324,6 +318,7 @@
       if (!data.current || !data.daily) throw new Error('Bad payload');
       writeCache(data);
       render(data, Date.now());
+      failures = 0;
       schedule(REFRESH_MS);
     } catch (err) {
       console.error('Weather fetch failed:', err);
@@ -331,7 +326,8 @@
       const cached = readCache();
       if (cached) render(cached.data, cached.t);
       else { el.desc.textContent = 'Weather unavailable'; el.updated.textContent = ''; }
-      schedule(RETRY_MS);
+      failures++;
+      schedule(Math.min(RETRY_MS * 2 ** (failures - 1), 5 * 60 * 1000));
     } finally {
       clearTimeout(abort);
     }
@@ -340,6 +336,11 @@
   const cached = readCache();
   if (cached) render(cached.data, cached.t);
   refresh();
+
+  // Offline cache for the page + images (needs sw.js beside this file and http/https hosting)
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
 
   // If the player wakes from sleep or the network returns, update right away
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
