@@ -103,10 +103,8 @@
 </svg>
 
 <div id="signage">
-  <!-- Local file first (bg.jpg next to this page); falls back to GitHub if it is missing -->
-  <img class="bg" id="bg" alt="" fetchpriority="high" decoding="async"
-       src="bg.jpg"
-       onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/East%20Wing.jpg'">
+  <!-- Background is loaded by script AFTER the weather, so the big photo never slows the data down -->
+  <img class="bg" id="bg" alt="" decoding="async">
   <div class="overlay"></div>
 
   <div class="content">
@@ -173,6 +171,8 @@
   const MAX_CACHE_AGE_MS = 6 * 60 * 60 * 1000; // Keep showing last known weather for up to 6 h offline
   const STALE_AFTER_MS = 45 * 60 * 1000;       // Label data "last known" after this
   const CACHE_KEY = 'hprime-weather-v2';
+  const BG_LOCAL = 'bg.jpg';                // local file first...
+  const BG_REMOTE = 'https://raw.githubusercontent.com/evildee09-glitch/HprimeWeather/main/East%20Wing.jpg'; // ...GitHub if missing
 
   const API_URL = 'https://api.open-meteo.com/v1/forecast?' + new URLSearchParams({
     latitude: LAT,
@@ -195,8 +195,14 @@
 
   // Background fades in once loaded (handles already-cached images too)
   const showBg = () => el.bg.classList.add('on');
-  el.bg.addEventListener('load', showBg);
-  if (el.bg.complete && el.bg.naturalWidth) showBg();
+  let bgStarted = false;
+  function loadBackground() {
+    if (bgStarted) return;
+    bgStarted = true;
+    el.bg.addEventListener('load', showBg, { once: true });
+    el.bg.onerror = () => { el.bg.onerror = null; el.bg.src = BG_REMOTE; };
+    el.bg.src = BG_LOCAL;
+  }
 
   const num = v => (typeof v === 'number' && isFinite(v)) ? Math.round(v) : null;
   const deg = v => (num(v) === null ? '--°' : num(v) + '°');
@@ -302,10 +308,12 @@
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), data })); } catch (e) {}
   }
 
-  let timer = null, failures = 0;
+  let timer = null, failures = 0, lastOk = 0, busy = false;
   const schedule = ms => { clearTimeout(timer); timer = setTimeout(refresh, ms); };
 
   async function refresh() {
+    if (busy) return;   // never stack requests on a slow link
+    busy = true;
     let abort;
     try {
       // Timeout via Promise.race (an AbortSignal can't cross postMessage in sandboxed previews)
@@ -319,6 +327,7 @@
       writeCache(data);
       render(data, Date.now());
       failures = 0;
+      lastOk = Date.now();
       schedule(REFRESH_MS);
     } catch (err) {
       console.error('Weather fetch failed:', err);
@@ -330,11 +339,14 @@
       schedule(Math.min(RETRY_MS * 2 ** (failures - 1), 5 * 60 * 1000));
     } finally {
       clearTimeout(abort);
+      busy = false;
+      loadBackground();   // weather has settled (or failed): now fetch the photo
     }
   }
 
   const cached = readCache();
-  if (cached) render(cached.data, cached.t);
+  if (cached) { render(cached.data, cached.t); loadBackground(); }
+  setTimeout(loadBackground, 8000);   // photo starts after 8 s at most, even if weather is stuck
   refresh();
 
   // Offline cache for the page + images (needs sw.js beside this file and http/https hosting)
@@ -343,7 +355,9 @@
   }
 
   // If the player wakes from sleep or the network returns, update right away
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && Date.now() - lastOk > 5 * 60 * 1000) refresh();
+  });
   window.addEventListener('online', refresh);
 })();
 </script>
